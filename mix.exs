@@ -1,7 +1,7 @@
 defmodule Rbmq.Mixfile do
   use Mix.Project
 
-  @version "0.3.1"
+  @version "0.3.2"
 
   def project do
     [app: :rbmq,
@@ -18,7 +18,7 @@ defmodule Rbmq.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger, :amqp_client, :amqp]]
+    [applications: [:logger, :amqp_client, :amqp, :rabbit_common]]
   end
 
   # Dependencies can be Hex packages:
@@ -31,10 +31,9 @@ defmodule Rbmq.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:amqp_client, github: "jbrisbin/amqp_client", tag: "rabbitmq-3.6.2", override: true},
-    {:poison, "~> 2.0"},
+    [{:poison, "~> 2.0"},
     {:confex, "~> 1.0"},
-    {:amqp, "0.1.5"},
+    {:amqp, "~> 0.2.0-pre.2"},
     {:benchfella, "~> 0.3", only: [:dev, :test]},
     {:ex_doc, ">= 0.0.0", only: :dev},
     {:dogma, "~> 0.1", only: :dev},
