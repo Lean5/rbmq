@@ -54,29 +54,35 @@ defmodule RBMQ.Connection.Helper do
   def open_connection(conn_opts) do
     Logger.debug "Establishing new AMQP connection, with opts: #{inspect conn_opts}"
 
-    conn = @defaults
-    |> Keyword.merge(conn_opts)
-    |> env
-    |> Connection.open
+    try do
+      conn = @defaults
+      |> Keyword.merge(conn_opts)
+      |> env
+      |> Connection.open
 
-    case conn do
-      {:ok, %Connection{}} = res ->
-        res
-      {:error, :not_allowed} ->
-        Logger.error "AMQP refused connection, opts: #{inspect conn_opts}"
-        {:error, "AMQP vhost not allowed"}
-      {:error, :econnrefused} ->
-        Logger.error "AMQP refused connection, opts: #{inspect conn_opts}"
-        {:error, "AMQP connection was refused"}
-      {:error, :timeout} ->
-        Logger.error "AMQP connection timeout, opts: #{inspect conn_opts}"
-        {:error, "AMQP connection timeout"}
-      {:error, {:auth_failure, message}} ->
-        Logger.error "AMQP authorization failed, opts: #{inspect conn_opts}"
-        {:error, "AMQP authorization failed: #{inspect message}"}
-      {:error, reason} ->
-        Logger.error "Error during AMQP connection establishing, opts: #{inspect conn_opts}"
-        {:error, inspect(reason)}
+      case conn do
+        {:ok, %Connection{}} = res ->
+          res
+        {:error, :not_allowed} ->
+          Logger.error "AMQP refused connection, opts: #{inspect conn_opts}"
+          {:error, "AMQP vhost not allowed"}
+        {:error, :econnrefused} ->
+          Logger.error "AMQP refused connection, opts: #{inspect conn_opts}"
+          {:error, "AMQP connection was refused"}
+        {:error, :timeout} ->
+          Logger.error "AMQP connection timeout, opts: #{inspect conn_opts}"
+          {:error, "AMQP connection timeout"}
+        {:error, {:auth_failure, message}} ->
+          Logger.error "AMQP authorization failed, opts: #{inspect conn_opts}"
+          {:error, "AMQP authorization failed: #{inspect message}"}
+        {:error, reason} ->
+          Logger.error "Error during AMQP connection establishing, opts: #{inspect conn_opts}"
+          {:error, inspect(reason)}
+      end
+    catch
+      reason ->
+        Logger.debug "Caught ERROR #{inspect reason}"
+        raise reason
     end
   end
 
