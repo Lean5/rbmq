@@ -50,8 +50,8 @@ defmodule Rbmq.Mixfile do
     [
      name: :rbmq,
      files: ["lib", "mix.exs", "README.md", "LICENSE.md"],
-     maintainers: ["Pavel Vesnin", "Andrew Dryga"],
+     maintainers: ["Pavel Vesnin", "Andrew Dryga", "Robb Wright"],
      licenses: ["MIT"],
-     links: %{"GitHub" => "https://github.com/Nebo15/rbmq"}]
+     links: %{"GitHub" => "https://github.com/audaxion/rbmq"}]
   end
 end
