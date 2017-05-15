@@ -4,7 +4,7 @@ defmodule Rbmq.Mixfile do
   @version "0.3.2"
 
   def project do
-    [app: :rbmq,
+    [app: :rbmq19,
      version: @version,
      elixir: "~> 1.3",
      build_embedded: Mix.env == :prod,
@@ -48,7 +48,7 @@ defmodule Rbmq.Mixfile do
 
   defp package do
     [
-     name: :rbmq,
+     name: :rbmq19,
      files: ["lib", "mix.exs", "README.md", "LICENSE.md"],
      maintainers: ["Pavel Vesnin", "Andrew Dryga", "Robb Wright"],
      licenses: ["MIT"],
