@@ -1,12 +1,12 @@
 defmodule Rbmq.Mixfile do
   use Mix.Project
 
-  @version "0.3.2"
+  @version "0.4.0"
 
   def project do
     [app: :rbmq19,
      version: @version,
-     elixir: "~> 1.3",
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      description: description(),
@@ -31,9 +31,9 @@ defmodule Rbmq.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:poison, "~> 2.0"},
+    [{:poison, "~> 3.0"},
     {:confex, "~> 1.0"},
-    {:amqp, "~> 0.2.0-pre.2"},
+    {:amqp, "~> 0.2.3"},
     {:benchfella, "~> 0.3", only: [:dev, :test]},
     {:ex_doc, ">= 0.0.0", only: :dev},
     {:dogma, "~> 0.1", only: :dev},
