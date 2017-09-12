@@ -10,16 +10,16 @@ defmodule RBMQ.Producer do
     quote bind_quoted: [opts: opts] do
       use RBMQ.GenQueue, opts
 
-      def validate_config!(conf) do
-        unless conf[:queue][:routing_key] do
-          raise "You need to set queue routing key in #{__MODULE__} options."
+      def validate_config(conf) do
+        unless conf[:publish][:routing_key] do
+          raise "You need to set a routing key in #{__MODULE__} options."
         end
 
-        case conf[:queue][:routing_key] do
+        case conf[:publish][:routing_key] do
           {:system, _, _} -> :ok
           {:system, _} -> :ok
           str when is_binary(str) -> :ok
-          unknown -> raise "Queue routing key for #{__MODULE__} must be a string or env link, " <>
+          unknown -> raise "Routing key for #{__MODULE__} must be a string or env link, " <>
                            "'#{inspect unknown}' given."
         end
 
@@ -53,34 +53,35 @@ defmodule RBMQ.Producer do
       @doc """
       Publish new message to a linked channel.
       """
-      def publish(data) do
-        GenServer.call(__MODULE__, {:publish, data}, :infinity)
+      def publish(data, opts \\ []) do
+        GenServer.call(__MODULE__, {:publish, data, opts}, :infinity)
       end
 
       @doc false
-      def handle_call({:publish, data}, _from, chan) do
+      def handle_call({:publish, data, opts}, _from, chan) do
         case Poison.encode(data) do
           {:ok, encoded_data} ->
-            safe_publish(chan, encoded_data)
+            safe_publish(chan, encoded_data, opts)
           {:error, _} = err ->
             {:reply, err, chan}
         end
       end
 
-      defp safe_publish(chan, data) do
+      defp safe_publish(chan, data, opts) do
         safe_run fn(chan) ->
-          cast(chan, data)
+          cast(chan, data, opts)
         end
       end
 
-      defp cast(chan, data) do
+      defp cast(chan, data, opts) do
         conf = chan_config()
 
-        is_persistent = Keyword.get(conf[:queue], :durable, false)
+        opts = Keyword.merge(conf[:publish], opts)
+        is_persistent = Keyword.get(opts, :durable, false)
 
         case AMQP.Basic.publish(chan,
                                 conf[:exchange][:name],
-                                conf[:queue][:routing_key],
+                                opts[:routing_key],
                                 data,
                                 [mandatory: true,
                                  persistent: is_persistent]) do
@@ -91,7 +92,7 @@ defmodule RBMQ.Producer do
         end
       end
 
-      defoverridable [validate_config!: 1]
+      defoverridable [validate_config: 1]
     end
   end
 

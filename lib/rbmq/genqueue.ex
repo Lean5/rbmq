@@ -39,47 +39,13 @@ defmodule RBMQ.GenQueue do
         chan
       end
 
-      def validate_config(conf) do
-        unless conf[:queue] do
-          raise "You need to configure queue in #{__MODULE__} options."
-        end
-
-        unless conf[:queue][:name] do
-          raise "You need to set queue name in #{__MODULE__} options."
-        end
-
-        case conf[:queue][:name] do
-          {:system, _, _} -> :ok
-          {:system, _} -> :ok
-          str when is_binary(str) -> :ok
-          unknown -> raise "Queue name for #{__MODULE__} must be a string or env link, '#{inspect unknown}' given."
-        end
-
-        conf
-        |> validate_config!
-      end
-
-      def validate_config!(conf) do
-        conf
-      end
-
       defp get_channel do
         chan = @channel_name
         |> @connection.get_channel
       end
 
-      def status do
-        GenServer.call(__MODULE__, :status)
-      end
-
       def chan_config do
         RBMQ.Connection.Channel.get_config(@channel_name)
-      end
-
-      def handle_call(:status, _from, chan) do
-        safe_run fn(_) ->
-          {:reply, AMQP.Queue.status(chan, chan_config()[:queue][:name]), chan}
-        end
       end
 
       def safe_run(fun) do
@@ -95,7 +61,7 @@ defmodule RBMQ.GenQueue do
         end
       end
 
-      defoverridable [init_worker: 2, validate_config!: 1]
+      defoverridable [init_worker: 2]
     end
   end
 

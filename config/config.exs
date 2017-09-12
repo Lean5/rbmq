@@ -34,6 +34,6 @@ config :rbmq, RBMQ.ConnectionTest.TestConnectionWithExternalConfig,
     connection_timeout: {:system, :integer, "MQ_TIMEOUT", 15_000}
 
 config :rbmq, RBMQ.ProducerTest.TestProducerWithExternalConfig,
-  queue: [
-    name: {:system, "CUST_QUEUE_NAME"},
+  publish: [
+    routing_key: {:system, "CUST_ROUTING_KEY"},
   ]

@@ -1,5 +1,5 @@
 defmodule RBMQ.ConsumerTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
   use AMQP
   doctest RBMQ.Consumer
 
@@ -13,9 +13,7 @@ defmodule RBMQ.ConsumerTest do
   defmodule TestProducer do
     use RBMQ.Producer,
       connection: ProducerTestConnection4Cons,
-      queue: [
-        name: "consumer_test_qeueue",
-        error_name: "consumer_test_qeueue_errors",
+      publish: [
         routing_key: "consumer_test_qeueue",
         durable: false
       ],
@@ -57,8 +55,8 @@ defmodule RBMQ.ConsumerTest do
     [channel: chan]
   end
 
-  test "read messages" do
-    assert {:ok, %{message_count: 0, queue: @queue}} = TestProducer.status
+  test "read messages", context do
+    assert {:ok, %{message_count: 0, queue: @queue}} = get_queue_status(context.channel)
 
     assert :ok == TestProducer.publish(%{example: true})
     assert :ok == TestProducer.publish(1)
@@ -68,7 +66,7 @@ defmodule RBMQ.ConsumerTest do
 
     :timer.sleep(200)
 
-    assert {:ok, %{message_count: 0, queue: @queue}} = TestProducer.status
+    assert {:ok, %{message_count: 0, queue: @queue}} = get_queue_status(context.channel)
   end
 
    test "reads messages when channel dies", context do
@@ -85,6 +83,12 @@ defmodule RBMQ.ConsumerTest do
     # Wait till it respawns
     :timer.sleep(5_000)
 
-    assert {:ok, %{message_count: 0, queue: @queue}} = TestProducer.status
+    assert {:ok, %{message_count: 0, queue: @queue}} =
+      ProducerTestConnection4Cons.get_channel(RBMQ.ConsumerTest.TestConsumer.Channel)
+      |> get_queue_status()    
+  end
+
+  defp get_queue_status(channel) do
+    AMQP.Queue.status(channel, @queue)
   end
 end

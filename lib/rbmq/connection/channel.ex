@@ -56,18 +56,25 @@ defmodule RBMQ.Connection.Channel do
   end
 
   defp configure_queue(chan, queue_opts) do
-    Helper.declare_queue(chan, queue_opts[:name], queue_opts[:error_name], queue_opts)
+    chan |> Helper.declare_queue(queue_opts[:name], queue_opts[:error_name], queue_opts)
+  end
+
+  defp configure_exchange(chan, _queue_opts, nil) do
     chan
   end
 
-  defp configure_exchange(chan, queue_opts, exchange_opts) when is_nil(queue_opts) or is_nil(exchange_opts) do
-    chan
+  defp configure_exchange(chan, nil, exchange_opts) do
+    chan |> declare_exchange(exchange_opts)
   end
 
   defp configure_exchange(chan, queue_opts, exchange_opts) do
-    Helper.declare_exchange(chan, exchange_opts[:name], exchange_opts[:type], exchange_opts)
-    Helper.bind_queue(chan, queue_opts[:name], exchange_opts[:name], routing_key: queue_opts[:routing_key])
     chan
+    |> declare_exchange(exchange_opts)
+    |> Helper.bind_queue(queue_opts[:name], exchange_opts[:name], routing_key: queue_opts[:routing_key])
+  end
+
+  defp declare_exchange(chan, exchange_opts) do
+    chan |> Helper.declare_exchange(exchange_opts[:name], exchange_opts[:type], exchange_opts)
   end
 
   @doc false

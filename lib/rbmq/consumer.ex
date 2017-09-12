@@ -10,6 +10,25 @@ defmodule RBMQ.Consumer do
     quote bind_quoted: [opts: opts] do
       use RBMQ.GenQueue, opts
 
+      def validate_config(conf) do
+        unless conf[:queue] do
+          raise "You need to configure queue in #{__MODULE__} options."
+        end
+
+        unless conf[:queue][:name] do
+          raise "You need to set queue name in #{__MODULE__} options."
+        end
+
+        case conf[:queue][:name] do
+          {:system, _, _} -> :ok
+          {:system, _} -> :ok
+          str when is_binary(str) -> :ok
+          unknown -> raise "Queue name for #{__MODULE__} must be a string or env link, '#{inspect unknown}' given."
+        end
+
+        conf
+      end
+
       def init_worker(chan, opts) do
         link_consumer(chan, opts[:queue][:name])
         chan
@@ -68,6 +87,16 @@ defmodule RBMQ.Consumer do
         end
       end
 
+      def status do
+        GenServer.call(__MODULE__, :status)
+      end
+
+      def handle_call(:status, _from, chan) do
+        safe_run fn(_) ->
+          {:reply, AMQP.Queue.status(chan, chan_config()[:queue][:name]), chan}
+        end
+      end
+
       def consume(_payload, [tag: tag, redelivered?: _redelivered, channel: chan]) do
         # Mark this message as unprocessed
         nack(tag)
@@ -76,7 +105,7 @@ defmodule RBMQ.Consumer do
         raise "#{__MODULE__}.consume/2 is not implemented"
       end
 
-      defoverridable [consume: 2]
+      defoverridable [consume: 2, validate_config: 1]
     end
   end
 
