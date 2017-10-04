@@ -42,11 +42,12 @@ defmodule RBMQ.ProducerTest do
 
   setup_all do
     ProducerTestConnection.start_link
-    TestProducer.start_link
     :ok
   end
 
   setup do
+    TestProducer.start_link
+
     chan = ProducerTestConnection.get_channel(RBMQ.ProducerTest.TestProducer.Channel)
     {:ok, _} = AMQP.Queue.declare(chan, @queue)
     :ok = AMQP.Queue.bind(chan, @queue, "producer_test_qeueue_exchange", routing_key: "producer_test_qeueue")
@@ -70,6 +71,7 @@ defmodule RBMQ.ProducerTest do
 
   test "publish message with custom routing key", context do
     assert :ok == TestProducer.publish("foo", routing_key: "custom_routing_key")
+    :timer.sleep(20)
     assert {:ok, %{message_count: 1, queue: @queue2}} = get_queue_status(context[:channel], @queue2)
   end
 
@@ -120,6 +122,9 @@ defmodule RBMQ.ProducerTest do
     System.delete_env("CUST_ROUTING_KEY")
 
     assert :ok == TestProducer.publish(%{example: true})
+    
+    Supervisor.stop(TestProducerWithExternalConfig)
+    Supervisor.stop(TestProducerWithExternalConfig.Channel)
   end
 
   defp get_queue_status(channel, queue \\ @queue) do
