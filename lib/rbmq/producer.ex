@@ -7,8 +7,8 @@ defmodule RBMQ.Producer do
 
   @doc false
   defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
-      use RBMQ.GenQueue, opts
+    quote do
+      use RBMQ.GenQueue, unquote(opts)
 
       def validate_config(conf) do
         unless conf[:publish][:routing_key] do
@@ -58,37 +58,40 @@ defmodule RBMQ.Producer do
       end
 
       @doc false
-      def handle_call({:publish, data, opts}, _from, chan) do
+      def handle_call({:publish, data, opts}, _from, state) do
         case Poison.encode(data) do
           {:ok, encoded_data} ->
-            safe_publish(chan, encoded_data, opts)
+            safe_publish(state, encoded_data, opts)
           {:error, _} = err ->
-            {:reply, err, chan}
+            {:reply, err, state}
         end
       end
 
-      defp safe_publish(chan, data, opts) do
+      defp safe_publish(state, data, opts) do
         safe_run fn(chan) ->
-          cast(chan, data, opts)
+          cast(state, chan, data, opts)
         end
       end
 
-      defp cast(chan, data, opts) do
+      defp cast(state, chan, data, opts) do
         conf = chan_config()
 
-        opts = Keyword.merge(conf[:publish], opts)
-        is_persistent = Keyword.get(opts, :durable, false)
+        publish_conf = conf[:publish]
+        is_persistent = Keyword.get(publish_conf, :durable, false)
+        default_opts = [mandatory: true, persistent: is_persistent]
+        
+        opts = Keyword.merge(default_opts, opts)
 
         case AMQP.Basic.publish(chan,
                                 conf[:exchange][:name],
-                                opts[:routing_key],
+                                publish_conf[:routing_key],
                                 data,
-                                [mandatory: true,
-                                 persistent: is_persistent]) do
+                                opts
+                                ) do
           :ok ->
-            {:reply, :ok, chan}
+            {:reply, :ok, struct(state, channel: chan)}
           _ ->
-            {:reply, :error, chan}
+            {:reply, :error, struct(state, channel: chan)}
         end
       end
 

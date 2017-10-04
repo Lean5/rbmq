@@ -37,7 +37,7 @@ defmodule RBMQ.ConsumerTest do
         prefetch_count: 10
       ]
 
-    def consume(_payload, [tag: tag, redelivered?: _redelivered]) do
+    def consume(_payload, %{tag: tag}) do
       ack(tag)
     end
   end

@@ -1,19 +1,26 @@
 defmodule RBMQ.GenQueue do
   @moduledoc false
 
+  defstruct [channel: nil]
+
   @doc false
   defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
+    state_struct = Keyword.get(opts, :state, RBMQ.GenQueue)
+    
+    quote bind_quoted: [opts: opts, state_struct: state_struct] do
       use GenServer
       use Confex, Keyword.delete(opts, :connection)
       require Logger
 
+      @state_struct state_struct
       @connection Keyword.get(opts, :connection) || @module_config[:connection]
       @channel_name String.to_atom("#{__MODULE__}.Channel")
 
-      unless @connection do
-        raise "You need to implement connection module and pass it in :connection option."
-      end
+      unless @state_struct |> struct() |> Map.has_key?(:channel),
+        do: raise "Custom state struct must contain a channel."
+
+      unless @connection,
+        do: raise "You need to implement connection module and pass it in :connection option."
 
       def start_link do
         GenServer.start_link(__MODULE__, config(), name: __MODULE__)
@@ -28,15 +35,15 @@ defmodule RBMQ.GenQueue do
             @connection.spawn_channel(@channel_name)
             @connection.configure_channel(@channel_name, opts)
 
-            chan = get_channel()
-            |> init_worker(opts)
+            state = struct(@state_struct, channel: get_channel())
+              |> init_worker(opts)
 
-            {:ok, chan}
+            {:ok, state}
         end
       end
 
-      def init_worker(chan, _opts) do
-        chan
+      def init_worker(state, _opts) do
+        state
       end
 
       defp get_channel do
@@ -49,6 +56,7 @@ defmodule RBMQ.GenQueue do
       end
 
       def safe_run(fun) do
+        # TODO - take state as parameter and use channel from state
         chan = get_channel()
 
         case !is_nil(chan) && Process.alive?(chan.pid) do

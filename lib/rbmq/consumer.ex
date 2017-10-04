@@ -7,8 +7,8 @@ defmodule RBMQ.Consumer do
 
   @doc false
   defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
-      use RBMQ.GenQueue, opts
+    quote do
+      use RBMQ.GenQueue, unquote(opts)
 
       def validate_config(conf) do
         unless conf[:queue] do
@@ -29,12 +29,12 @@ defmodule RBMQ.Consumer do
         conf
       end
 
-      def init_worker(chan, opts) do
-        link_consumer(chan, opts[:queue][:name])
-        chan
+      def init_worker(state, opts) do
+        link_consumer(opts[:queue][:name])
+        state
       end
 
-      defp link_consumer(chan, queue_name) do
+      defp link_consumer(queue_name) do
         safe_run fn(chan) ->
           {:ok, _consumer_tag} = AMQP.Basic.consume(chan, queue_name)
           Process.monitor(chan.pid)
@@ -44,7 +44,7 @@ defmodule RBMQ.Consumer do
       @doc false
       def handle_info({:DOWN, monitor_ref, :process, pid, reason}, state) do
         Process.demonitor(monitor_ref)
-        state = link_consumer(nil, chan_config()[:queue][:name])
+        state = link_consumer(chan_config()[:queue][:name])
         {:noreply, state}
       end
 
@@ -64,9 +64,8 @@ defmodule RBMQ.Consumer do
       end
 
       # Handle new message delivery
-      def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered}}, state) do
-        consume(payload, [tag: tag, redelivered?: redelivered])
-        {:noreply, state}
+      def handle_info({:basic_deliver, payload, meta}, state) do
+        handle_delivery(payload, meta, state)
       end
 
       def ack(tag) do
@@ -91,13 +90,18 @@ defmodule RBMQ.Consumer do
         GenServer.call(__MODULE__, :status)
       end
 
-      def handle_call(:status, _from, chan) do
+      def handle_call(:status, _from, %{channel: chan}) do
         safe_run fn(_) ->
           {:reply, AMQP.Queue.status(chan, chan_config()[:queue][:name]), chan}
         end
       end
 
-      def consume(_payload, [tag: tag, redelivered?: _redelivered, channel: chan]) do
+      def handle_delivery(payload, meta, state) do
+        consume(payload, meta)
+        {:noreply, state}
+      end
+
+      def consume(_payload, %{tag: tag}) do
         # Mark this message as unprocessed
         nack(tag)
         # Stop consumer from receiving more messages
@@ -105,7 +109,7 @@ defmodule RBMQ.Consumer do
         raise "#{__MODULE__}.consume/2 is not implemented"
       end
 
-      defoverridable [consume: 2, validate_config: 1]
+      defoverridable [handle_delivery: 3, consume: 2, validate_config: 1]
     end
   end
 
