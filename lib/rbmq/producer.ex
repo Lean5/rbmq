@@ -79,12 +79,13 @@ defmodule RBMQ.Producer do
         publish_conf = conf[:publish]
         is_persistent = Keyword.get(publish_conf, :durable, false)
         default_opts = [mandatory: true, persistent: is_persistent]
+        routing_key = opts[:routing_key] || publish_conf[:routing_key] 
         
         opts = Keyword.merge(default_opts, opts)
 
         case AMQP.Basic.publish(chan,
                                 conf[:exchange][:name],
-                                publish_conf[:routing_key],
+                                routing_key,
                                 data,
                                 opts
                                 ) do

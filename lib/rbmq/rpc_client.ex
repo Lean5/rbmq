@@ -17,7 +17,7 @@ defmodule RBMQ.RpcClient do
       def call(payload, opts \\ []) do
         timeout = Keyword.get(opts, :timeout, @call_timeout)
         try do
-          GenServer.call(__MODULE__, {:call, payload}, timeout)
+          GenServer.call(__MODULE__, {:call, payload, opts}, timeout)
         catch
           :exit, reason -> {:error, reason}
         end
@@ -50,7 +50,7 @@ defmodule RBMQ.RpcClient do
         end
       end
 
-      def handle_call({:call, payload}, from, state) do
+      def handle_call({:call, payload, opts}, from, state) do
         case Poison.encode(payload) do
           {:ok, encoded_data} ->
             %{correlation_id: correlation_id,
@@ -59,15 +59,16 @@ defmodule RBMQ.RpcClient do
             encoded_correlation_id = correlation_id |> Integer.to_string
             continuation_map = Map.put(continuation_map, encoded_correlation_id, from)
             state = struct(state, [correlation_id: correlation_id + 1, continuation_map: continuation_map])
-            safe_call(state, encoded_data, encoded_correlation_id)
+            safe_call(state, encoded_data, encoded_correlation_id, opts)
 
           {:error, _} = err ->
             {:reply, err, state}
         end
       end
 
-      defp safe_call(state, data, correlation_id) do
-        case safe_publish(state, data, type: "rpc-call", correlation_id: correlation_id, reply_to: @reply_to_queue) do
+      defp safe_call(state, data, correlation_id, opts) do
+        opts = Keyword.merge(opts, type: "rpc-call", correlation_id: correlation_id, reply_to: @reply_to_queue)
+        case safe_publish(state, data, opts) do
           {:reply, :error, state} ->
             continuation_map = Map.delete(state.continuation_map, correlation_id)
             struct(state, continuation_map: continuation_map)
