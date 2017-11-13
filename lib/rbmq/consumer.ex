@@ -101,7 +101,7 @@ defmodule RBMQ.Consumer do
         {:noreply, state}
       end
 
-      def consume(_payload, %{tag: tag}) do
+      def consume(_payload, %{delivery_tag: tag}) do
         # Mark this message as unprocessed
         nack(tag)
         # Stop consumer from receiving more messages
