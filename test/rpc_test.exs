@@ -24,6 +24,20 @@ defmodule RBMQ.RpcTest do
       ]
   end
 
+  defmodule SlowRpcTestClient do
+    use RBMQ.RpcClient,
+      connection: RpcTestConnection,
+      publish: [
+        routing_key: "rpc_test_queue_slow",
+        durable: false
+      ],
+      exchange: [
+        name: "rpc_exchange",
+        type: :direct,
+        durable: false
+      ]
+  end
+
   defmodule RpcTestServer do
     use RBMQ.RpcServer,
       connection: RpcTestConnection,
@@ -46,10 +60,32 @@ defmodule RBMQ.RpcTest do
     end
   end
 
+  defmodule SlowRpcTestServer do
+    use RBMQ.RpcServer,
+      connection: RpcTestConnection,
+      queue: [
+        name: "rpc_test_queue_slow",
+        routing_key: "rpc_test_queue_slow",
+        durable: false
+      ],
+      exchange: [
+        name: "rpc_exchange",
+        type: :direct,
+        durable: false
+      ]
+
+    def call(payload) do
+      Process.sleep(100)
+      payload |> String.upcase
+    end
+  end
+
   setup_all do
     RpcTestConnection.start_link
     RpcTestClient.start_link
     RpcTestServer.start_link
+    SlowRpcTestClient.start_link
+    SlowRpcTestServer.start_link
     :ok
   end
 
@@ -82,5 +118,9 @@ defmodule RBMQ.RpcTest do
       end)
     end
     |> Enum.each(&Task.await/1)
+  end
+
+  test "call timeout" do
+    assert {:error, {:timeout, _}} = SlowRpcTestClient.call("foo", timeout: 10)
   end
 end

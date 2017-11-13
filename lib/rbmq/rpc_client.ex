@@ -14,17 +14,26 @@ defmodule RBMQ.RpcClient do
       @reply_to_queue "amq.rabbitmq.reply-to"
       @call_timeout unquote(Keyword.get(opts, :call_timeout, 5000))
 
-      def call(payload) do        
-        GenServer.call(__MODULE__, {:call, payload}, @call_timeout)
+      def call(payload, opts \\ []) do
+        timeout = Keyword.get(opts, :timeout, @call_timeout)
+        try do
+          GenServer.call(__MODULE__, {:call, payload}, timeout)
+        catch
+          :exit, reason -> {:error, reason}
+        end
       end
 
-      def call!(payload) do        
-        case GenServer.call(__MODULE__, {:call, payload}, @call_timeout) do
+      def call!(payload, opts \\ []) do        
+        case call(payload, opts) do
           {:ok, res} -> res
           {:error, %{"message" => msg} = err} ->
             stacktrace = Map.get(err, "stacktrace", "<NA>")
-            Logger.error("[RpcClient] server returned error \"#{msg} - stacktrace: #{stacktrace}")
+            Logger.error("[RpcClient] server returned error \"#{msg}\" - stacktrace: #{stacktrace}")
             raise msg
+
+          {:error, reason} ->
+            Logger.error("[RpcClient] failed with error #{inspect reason}")
+            raise RuntimeError
         end
       end
 
