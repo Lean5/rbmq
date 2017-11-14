@@ -214,7 +214,14 @@ defmodule RBMQ.Connection.Helper do
   """
   def bind_queue(%Channel{} = chan, queue, exchange, opts) do
     Logger.debug "Binding new queue '#{queue}' to exchange '#{exchange}'. Options: #{inspect opts}"
-    Queue.bind(chan, env(queue), env(exchange), env(opts))
+    queue = env(queue)
+    exchange = env(exchange)
+    opts = env(opts)
+    case opts[:routing_key] do
+      nil -> [nil]
+      keys -> keys
+    end
+    |> Enum.each(&Queue.bind(chan, queue, exchange, Keyword.merge(opts, routing_key: &1)))
 
     chan
   end

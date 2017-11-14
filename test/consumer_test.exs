@@ -3,7 +3,7 @@ defmodule RBMQ.ConsumerTest do
   use AMQP
   doctest RBMQ.Consumer
 
-  @queue "consumer_test_qeueue"
+  @queue "consumer_test_queue"
 
   defmodule ProducerTestConnection4Cons do
     use RBMQ.Connection,
@@ -14,11 +14,11 @@ defmodule RBMQ.ConsumerTest do
     use RBMQ.Producer,
       connection: ProducerTestConnection4Cons,
       publish: [
-        routing_key: "consumer_test_qeueue",
+        routing_key: "consumer_test_queue",
         durable: false
       ],
       exchange: [
-        name: "consumer_test_qeueue_exchange",
+        name: "consumer_test_queue_exchange",
         type: :direct,
         durable: false
       ]
@@ -28,16 +28,22 @@ defmodule RBMQ.ConsumerTest do
     use RBMQ.Consumer,
       connection: ProducerTestConnection4Cons,
       queue: [
-        name: "consumer_test_qeueue",
-        error_name: "consumer_test_qeueue_errors",
-        routing_key: "consumer_test_qeueue",
+        name: "consumer_test_queue",
+        error_name: "consumer_test_queue_error",
+        routing_key: ["consumer_test_queue", "another_consumer_test_queue"],
+        durable: false
+      ],
+      exchange: [
+        name: "consumer_test_queue_exchange",
+        type: :direct,
         durable: false
       ],
       qos: [
         prefetch_count: 10
       ]
 
-    def consume(_payload, %{tag: tag}) do
+    def consume(payload, %{delivery_tag: tag}) do
+      :ets.insert_new(:consumer_table, {tag, payload |> Poison.decode!})
       ack(tag)
     end
   end
@@ -52,6 +58,7 @@ defmodule RBMQ.ConsumerTest do
   setup do
     chan = ProducerTestConnection4Cons.get_channel(RBMQ.ConsumerTest.TestConsumer.Channel)
     AMQP.Queue.purge(chan, @queue)
+    :ets.new(:consumer_table, [:named_table, :public])
     [channel: chan]
   end
 
@@ -67,6 +74,7 @@ defmodule RBMQ.ConsumerTest do
     :timer.sleep(200)
 
     assert {:ok, %{message_count: 0, queue: @queue}} = get_queue_status(context.channel)
+    assert 5 == :ets.match_object(:consumer_table, :"$1") |> Enum.count
   end
 
    test "reads messages when channel dies", context do
@@ -86,6 +94,15 @@ defmodule RBMQ.ConsumerTest do
     assert {:ok, %{message_count: 0, queue: @queue}} =
       ProducerTestConnection4Cons.get_channel(RBMQ.ConsumerTest.TestConsumer.Channel)
       |> get_queue_status()    
+    assert :ets.match_object(:consumer_table, :"$1") |> Enum.count >= 20
+  end
+
+  test "consumes messages from all specified routing keys", context do
+    value = "another queue"
+    assert :ok == TestProducer.publish(value, routing_key: "another_consumer_test_queue")
+    :timer.sleep(100)
+    assert {:ok, %{message_count: 0, queue: @queue}} = get_queue_status(context.channel)
+    assert [{_, ^value}] = :ets.match_object(:consumer_table, :"$1")
   end
 
   defp get_queue_status(channel) do
