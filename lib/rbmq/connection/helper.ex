@@ -218,7 +218,7 @@ defmodule RBMQ.Connection.Helper do
     exchange = env(exchange)
     opts = env(opts)
     case opts[:routing_key] |> List.wrap do
-      [nil] -> [nil]
+      [] -> [nil]
       keys -> keys
     end
     |> Enum.each(&Queue.bind(chan, queue, exchange, Keyword.merge(opts, routing_key: &1)))
