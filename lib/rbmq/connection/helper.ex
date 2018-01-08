@@ -52,13 +52,13 @@ defmodule RBMQ.Connection.Helper do
   Same as `open_connection!/1`, but returns {:ok, conn} or {:error, reason} tuples.
   """
   def open_connection(conn_opts) do
-    Logger.debug "Establishing new AMQP connection, with opts: #{inspect conn_opts}"
+    Logger.debug "Establishing new AMQP connection, with opts: #{inspect Keyword.put(conn_opts, :password, "*****")}"
 
     new_opts = @defaults
    |> Keyword.merge(conn_opts)
    |> env
 
-    Logger.debug "Establishing new AMQP connection, with merged opts: #{inspect new_opts}"
+    Logger.debug "Establishing new AMQP connection, with merged opts: #{inspect Keyword.put(new_opts, :password, "*****")}"
 
     conn = new_opts
     |> Connection.open
