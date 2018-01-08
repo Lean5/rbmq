@@ -2,6 +2,9 @@ defmodule RBMQ.RpcClient do
   @moduledoc """
   RPC Client
   """
+
+  alias RBMQ.RpcClient
+
   defstruct [channel: nil, continuation_map: %{}, correlation_id: 1]
 
   @doc false
@@ -46,7 +49,7 @@ defmodule RBMQ.RpcClient do
         safe_run fn(chan) ->
           {:ok, _consumer_tag} = AMQP.Basic.consume(chan, @reply_to_queue, nil, no_ack: true)
           Process.monitor(chan.pid)
-          struct(state, channel: chan)
+          %RpcClient{state | channel: chan}
         end
       end
 
@@ -57,8 +60,8 @@ defmodule RBMQ.RpcClient do
               continuation_map: continuation_map}  = state
 
             encoded_correlation_id = correlation_id |> Integer.to_string
-            continuation_map = Map.put(continuation_map, encoded_correlation_id, from)
-            state = struct(state, [correlation_id: correlation_id + 1, continuation_map: continuation_map])
+            continuation_map = Map.put(continuation_map, encoded_correlation_id, {from, Keyword.take(opts, [:raw])})
+            state = %RpcClient{state | correlation_id: correlation_id + 1, continuation_map: continuation_map}
             safe_call(state, encoded_data, encoded_correlation_id, opts)
 
           {:error, _} = err ->
@@ -71,7 +74,7 @@ defmodule RBMQ.RpcClient do
         case safe_publish(state, data, opts) do
           {:reply, :error, state} ->
             continuation_map = Map.delete(state.continuation_map, correlation_id)
-            struct(state, continuation_map: continuation_map)
+            state = %RpcClient{state | continuation_map: continuation_map}
             {:reply, :error, state}
 
           # do not send reply in case of success
@@ -107,12 +110,21 @@ defmodule RBMQ.RpcClient do
         %{correlation_id: correlation_id} = meta
         case Map.get(continuations, correlation_id) do
           nil -> {:noreply, state}
-          from ->
+          {from, opts} ->
             response = payload
-              |> Poison.decode!
+              |> decode(meta, Keyword.get(opts, :raw, false))
               |> make_response(meta)
             GenServer.reply(from, response)
-            {:noreply, struct(state, continuation_map: Map.delete(continuations, correlation_id))}
+            {:noreply, %RpcClient{state | continuation_map: Map.delete(continuations, correlation_id)}}
+        end
+      end
+
+      defp decode(payload, meta, true), do: payload # raw -> do not perform any decoding
+      defp decode(payload, meta, false) do
+        case meta do
+          %{content_type: "application/json"} -> Poison.decode!(payload)
+          %{content_type: type} when is_binary(type) -> raise "Don't know how to decode content_type #{type}"
+          _ -> Poison.decode!(payload) # default -> assume JSON
         end
       end
 

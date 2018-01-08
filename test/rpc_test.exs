@@ -42,7 +42,7 @@ defmodule RBMQ.RpcTest do
       if payload == "crash",
         do: raise payload
 
-      payload |> String.upcase
+      %{result: payload |> String.upcase}
     end
   end
 
@@ -62,7 +62,7 @@ defmodule RBMQ.RpcTest do
 
     def call(payload) do
       Process.sleep(100)
-      payload |> String.upcase
+      %{result: payload |> String.upcase}
     end
   end
 
@@ -84,7 +84,7 @@ defmodule RBMQ.RpcTest do
   end
 
   test "call returns :ok tuple with result when successful" do
-    assert {:ok, "FOO"} = RpcTestClient.call("foo")
+    assert {:ok, %{"result" => "FOO"}} = RpcTestClient.call("foo")
   end
 
   test "call returns :error tuple with exception info when not successful" do
@@ -95,11 +95,15 @@ defmodule RBMQ.RpcTest do
     assert_raise RuntimeError, "crash", fn -> RpcTestClient.call!("crash") end
   end
 
+  test "call! returns raw string when :raw is set to true" do
+    assert {:ok, "{\"result\":\"FOO\"}"} = RpcTestClient.call("foo", raw: true)
+  end
+
   test "perform many parallel calls, each getting the correct response" do
     for n <- 1..1000 do
       Task.async(fn ->
         value = Integer.to_string(n)
-        assert value == RpcTestClient.call!(value)
+        assert %{ "result" => ^value } = RpcTestClient.call!(value)
       end)
     end
     |> Enum.each(&Task.await/1)
