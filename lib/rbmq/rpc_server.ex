@@ -16,7 +16,7 @@ defmodule RBMQ.RpcServer do
             {type, response} =
               try do
                 response = payload
-                  |> Poison.decode!
+                  |> Jason.decode!
                   |> call(meta)
 
                 {"rpc-call-success", response}
@@ -28,7 +28,7 @@ defmodule RBMQ.RpcServer do
                   {"rpc-call-error", %{message: msg, stacktrace: Exception.format_stacktrace()}}
               end
             
-            response = response |> Poison.encode!
+            response = response |> Jason.encode!
             :ok = AMQP.Basic.publish(channel, "", meta.reply_to, response, type: type, correlation_id: meta.correlation_id)
           end)
         end

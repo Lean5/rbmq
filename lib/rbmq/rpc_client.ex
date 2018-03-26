@@ -54,7 +54,7 @@ defmodule RBMQ.RpcClient do
       end
 
       def handle_call({:call, payload, opts}, from, state) do
-        case Poison.encode(payload) do
+        case Jason.encode(payload) do
           {:ok, encoded_data} ->
             %{correlation_id: correlation_id,
               continuation_map: continuation_map}  = state
@@ -122,9 +122,9 @@ defmodule RBMQ.RpcClient do
       defp decode(payload, meta, true), do: payload # raw -> do not perform any decoding
       defp decode(payload, meta, false) do
         case meta do
-          %{content_type: "application/json"} -> Poison.decode!(payload)
+          %{content_type: "application/json"} -> Jason.decode!(payload)
           %{content_type: type} when is_binary(type) -> raise "Don't know how to decode content_type #{type}"
-          _ -> Poison.decode!(payload) # default -> assume JSON
+          _ -> Jason.decode!(payload) # default -> assume JSON
         end
       end
 

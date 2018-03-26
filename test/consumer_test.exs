@@ -43,7 +43,7 @@ defmodule RBMQ.ConsumerTest do
       ]
 
     def consume(payload, %{delivery_tag: tag}) do
-      :ets.insert_new(:consumer_table, {tag, payload |> Poison.decode!})
+      :ets.insert_new(:consumer_table, {tag, payload |> Jason.decode!})
       ack(tag)
     end
   end

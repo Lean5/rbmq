@@ -59,7 +59,7 @@ defmodule RBMQ.Producer do
 
       @doc false
       def handle_call({:publish, data, opts}, _from, state) do
-        case Poison.encode(data) do
+        case Jason.encode(data) do
           {:ok, encoded_data} ->
             safe_publish(state, encoded_data, opts)
           {:error, _} = err ->
