@@ -10,10 +10,8 @@ defmodule RBMQ.ChannelTest do
 
   defmodule TestChannelSupervisor do
     def start do
-      import Supervisor.Spec, warn: false
-
       children = [
-        supervisor(TestConnection, []),
+        TestConnection,
       ]
 
       opts = [strategy: :one_for_one, name: TestChannelSupervisor]

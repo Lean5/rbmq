@@ -22,7 +22,7 @@ defmodule RBMQ.GenQueue do
       unless @connection,
         do: raise "You need to implement connection module and pass it in :connection option."
 
-      def start_link do
+      def start_link(_args \\ []) do
         GenServer.start_link(__MODULE__, config(), name: __MODULE__)
       end
 

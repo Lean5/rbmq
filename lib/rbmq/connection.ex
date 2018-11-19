@@ -35,9 +35,9 @@ defmodule RBMQ.Connection do
         Supervisor.stop(__MODULE__)
       end
 
-      def start_link do
+      def start_link(args \\ []) do
         RBMQ.Connection.Guard.start_link(__MODULE__, @guard_name)
-        Supervisor.start_link(__MODULE__, [], name: __MODULE__)
+        Supervisor.start_link(__MODULE__, args, name: __MODULE__)
       end
 
       def spawn_channel(name) do
@@ -58,14 +58,15 @@ defmodule RBMQ.Connection do
         Supervisor.terminate_child(__MODULE__, pid)
       end
 
+      @impl true
       def init(_conf) do
         conf = [connection: connect(), config: @worker_config]
 
         children = [
-          worker(RBMQ.Connection.Channel, [conf], restart: :transient)
+          Supervisor.child_spec({RBMQ.Connection.Channel, conf}, restart: :transient)
         ]
 
-        supervise(children, strategy: :simple_one_for_one)
+        Supervisor.init(children, strategy: :simple_one_for_one)
       end
     end
   end

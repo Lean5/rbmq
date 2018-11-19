@@ -119,15 +119,13 @@ defmodule MyApp do
   # See http://elixir-lang.org/docs/stable/elixir/Application.html
   # for more information on OTP Applications
   def start(_type, _args) do
-    import Supervisor.Spec, warn: false
-
     # Define workers and child supervisors to be supervised
     children = [
       # Start the AMQP connection
-      supervisor(MyAMQPConnection, []),
+      MyAMQPConnection,
       # Start producer and consumer
-      worker(MyProducer, []),
-      worker(MyConsumer, []),
+      MyProducer,
+      MyConsumer,
     ]
 
     opts = [strategy: :one_for_one, name: AssetProcessor.API.Supervisor]
