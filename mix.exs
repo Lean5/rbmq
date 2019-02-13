@@ -32,7 +32,7 @@ defmodule Rbmq.Mixfile do
   defp deps do
     [{:jason, "~> 1.0"},
     {:confex, "~> 1.0"},
-    {:amqp, "~> 1.0.2"},
+    {:amqp, "~> 1.1.1"},
     {:benchfella, "~> 0.3", only: [:dev, :test]},
     {:ex_doc, ">= 0.0.0", only: :dev},
     {:dogma, "~> 0.1", only: :dev},
