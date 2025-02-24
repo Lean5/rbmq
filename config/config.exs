@@ -1,6 +1,6 @@
 # This file is responsible for configuring your application
 # and its dependencies with the aid of the Mix.Config module.
-use Mix.Config
+import Config
 
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this
@@ -25,15 +25,15 @@ use Mix.Config
 # config :logger, level: :info
 
 # RabbitMQ config
-config :rbmq, RBMQ.ConnectionTest.TestConnectionWithExternalConfig,
-    host: {:system, "CUST_MQ_HOST", "other_host"},
-    port: {:system, :integer, "CUST_MQ_PORT", 1234},
-    username: {:system, "MQ_USER", "guest"},
-    password: {:system, "MQ_PASSWORD", "guest"},
-    virtual_host: {:system, "MQ_VHOST", "/"},
-    connection_timeout: {:system, :integer, "MQ_TIMEOUT", 15_000}
+config :rbmq19, RBMQ.ConnectionTest.TestConnectionWithExternalConfig,
+  host: {:system, "CUST_MQ_HOST", "other_host"},
+  port: {:system, :integer, "CUST_MQ_PORT", 1234},
+  username: {:system, "MQ_USER", "root"},
+  password: {:system, "MQ_PASSWORD", "root"},
+  virtual_host: {:system, "MQ_VHOST", "/"},
+  connection_timeout: {:system, :integer, "MQ_TIMEOUT", 15_000}
 
-config :rbmq, RBMQ.ProducerTest.TestProducerWithExternalConfig,
+config :rbmq19, RBMQ.ProducerTest.TestProducerWithExternalConfig,
   publish: [
-    routing_key: {:system, "CUST_ROUTING_KEY"},
+    routing_key: {:system, "CUST_ROUTING_KEY"}
   ]

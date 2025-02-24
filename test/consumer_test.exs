@@ -7,7 +7,7 @@ defmodule RBMQ.ConsumerTest do
 
   defmodule ProducerTestConnection4Cons do
     use RBMQ.Connection,
-      otp_app: :rbmq
+      otp_app: :rbmq19
   end
 
   defmodule TestProducer do
@@ -43,15 +43,15 @@ defmodule RBMQ.ConsumerTest do
       ]
 
     def consume(payload, %{delivery_tag: tag}) do
-      :ets.insert_new(:consumer_table, {tag, payload |> Jason.decode!})
+      :ets.insert_new(:consumer_table, {tag, payload |> Jason.decode!()})
       ack(tag)
     end
   end
 
   setup_all do
-    ProducerTestConnection4Cons.start_link
-    TestProducer.start_link
-    TestConsumer.start_link
+    ProducerTestConnection4Cons.start_link()
+    TestProducer.start_link()
+    TestConsumer.start_link()
     :ok
   end
 
@@ -74,27 +74,29 @@ defmodule RBMQ.ConsumerTest do
     :timer.sleep(200)
 
     assert {:ok, %{message_count: 0, queue: @queue}} = get_queue_status(context.channel)
-    assert 5 == :ets.match_object(:consumer_table, :"$1") |> Enum.count
+    assert 5 == :ets.match_object(:consumer_table, :"$1") |> Enum.count()
   end
 
-   test "reads messages when channel dies", context do
+  test "reads messages when channel dies", context do
     for n <- 1..100 do
       assert :ok == TestProducer.publish(n)
+
       if n == 20 do
         # Kill channel
         AMQP.Channel.close(context[:channel])
-        :timer.sleep(1) # Break execution loop
+        # Break execution loop
+        :timer.sleep(1)
       end
     end
-
 
     # Wait till it respawns
     :timer.sleep(5_000)
 
     assert {:ok, %{message_count: 0, queue: @queue}} =
-      ProducerTestConnection4Cons.get_channel(RBMQ.ConsumerTest.TestConsumer.Channel)
-      |> get_queue_status()    
-    assert :ets.match_object(:consumer_table, :"$1") |> Enum.count >= 20
+             ProducerTestConnection4Cons.get_channel(RBMQ.ConsumerTest.TestConsumer.Channel)
+             |> get_queue_status()
+
+    assert :ets.match_object(:consumer_table, :"$1") |> Enum.count() >= 20
   end
 
   test "consumes messages from all specified routing keys", context do

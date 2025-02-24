@@ -1,12 +1,12 @@
 defmodule RBMQ.GenQueue do
   @moduledoc false
 
-  defstruct [channel: nil]
+  defstruct channel: nil
 
   @doc false
   defmacro __using__(opts) do
     state_struct = Keyword.get(opts, :state, RBMQ.GenQueue)
-    
+
     quote bind_quoted: [opts: opts, state_struct: state_struct] do
       use GenServer
       use Confex, Keyword.delete(opts, :connection)
@@ -17,10 +17,10 @@ defmodule RBMQ.GenQueue do
       @channel_name String.to_atom("#{__MODULE__}.Channel")
 
       unless @state_struct |> struct() |> Map.has_key?(:channel),
-        do: raise "Custom state struct must contain a channel."
+        do: raise("Custom state struct must contain a channel.")
 
       unless @connection,
-        do: raise "You need to implement connection module and pass it in :connection option."
+        do: raise("You need to implement connection module and pass it in :connection option.")
 
       def start_link(_args \\ []) do
         GenServer.start_link(__MODULE__, config(), name: __MODULE__)
@@ -31,11 +31,13 @@ defmodule RBMQ.GenQueue do
           nil ->
             # Connection doesn't exist, lets fail to recover later
             {:error, :noconn}
+
           _ ->
             @connection.spawn_channel(@channel_name)
             @connection.configure_channel(@channel_name, opts)
 
-            state = struct(@state_struct, channel: get_channel())
+            state =
+              struct(@state_struct, channel: get_channel())
               |> init_worker(opts)
 
             {:ok, state}
@@ -47,8 +49,9 @@ defmodule RBMQ.GenQueue do
       end
 
       defp get_channel do
-        chan = @channel_name
-        |> @connection.get_channel
+        chan =
+          @channel_name
+          |> @connection.get_channel
       end
 
       def chan_config do
@@ -62,27 +65,30 @@ defmodule RBMQ.GenQueue do
         case !is_nil(chan) && Process.alive?(chan.pid) do
           true ->
             fun.(chan)
+
           _ ->
-            Logger.warn("[GenQueue] Channel #{inspect @channel_name} is dead, waiting till it gets restarted")
+            Logger.warning(
+              "[GenQueue] Channel #{inspect(@channel_name)} is dead, waiting till it gets restarted"
+            )
+
             :timer.sleep(3_000)
             safe_run(fun)
         end
       end
 
-      defoverridable [init_worker: 2]
+      defoverridable init_worker: 2
     end
   end
 
   @doc """
   Create a link to worker process. Used in supervisors.
   """
-  @callback start_link :: Supervisor.on_start
+  @callback start_link :: Supervisor.on_start()
 
   @doc """
   Get queue status.
   """
-  @callback status :: {:ok, %{consumer_count: integer,
-                              message_count: integer,
-                              queue: String.t()}}
-                    | {:error, String.t()}
+  @callback status ::
+              {:ok, %{consumer_count: integer, message_count: integer, queue: String.t()}}
+              | {:error, String.t()}
 end

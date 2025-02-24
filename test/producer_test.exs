@@ -6,7 +6,7 @@ defmodule RBMQ.ProducerTest do
 
   defmodule ProducerTestConnection do
     use RBMQ.Connection,
-      otp_app: :rbmq
+      otp_app: :rbmq19
   end
 
   @queue "producer_test_qeueue"
@@ -28,7 +28,7 @@ defmodule RBMQ.ProducerTest do
 
   defmodule TestProducerWithExternalConfig do
     use RBMQ.Producer,
-      otp_app: :rbmq,
+      otp_app: :rbmq19,
       connection: ProducerTestConnection,
       publish: [
         durable: false
@@ -41,21 +41,35 @@ defmodule RBMQ.ProducerTest do
   end
 
   setup_all do
-    ProducerTestConnection.start_link
+    ProducerTestConnection.start_link()
     :ok
   end
 
   setup do
-    TestProducer.start_link
+    TestProducer.start_link()
 
     chan = ProducerTestConnection.get_channel(RBMQ.ProducerTest.TestProducer.Channel)
     {:ok, _} = AMQP.Queue.declare(chan, @queue)
-    :ok = AMQP.Queue.bind(chan, @queue, "producer_test_qeueue_exchange", routing_key: "producer_test_qeueue")
-    :ok = AMQP.Queue.bind(chan, @queue, "producer_test_qeueue_exchange", routing_key: "ext_producer_test_routing_key")
+
+    :ok =
+      AMQP.Queue.bind(chan, @queue, "producer_test_qeueue_exchange",
+        routing_key: "producer_test_qeueue"
+      )
+
+    :ok =
+      AMQP.Queue.bind(chan, @queue, "producer_test_qeueue_exchange",
+        routing_key: "ext_producer_test_routing_key"
+      )
+
     AMQP.Queue.purge(chan, @queue)
 
     {:ok, _} = AMQP.Queue.declare(chan, @queue2)
-    :ok = AMQP.Queue.bind(chan, @queue2, "producer_test_qeueue_exchange", routing_key: "custom_routing_key")
+
+    :ok =
+      AMQP.Queue.bind(chan, @queue2, "producer_test_qeueue_exchange",
+        routing_key: "custom_routing_key"
+      )
+
     AMQP.Queue.purge(chan, @queue2)
 
     [channel: chan]
@@ -72,7 +86,9 @@ defmodule RBMQ.ProducerTest do
   test "publish message with custom routing key", context do
     assert :ok == TestProducer.publish("foo", routing_key: "custom_routing_key")
     :timer.sleep(20)
-    assert {:ok, %{message_count: 1, queue: @queue2}} = get_queue_status(context[:channel], @queue2)
+
+    assert {:ok, %{message_count: 1, queue: @queue2}} =
+             get_queue_status(context[:channel], @queue2)
   end
 
   test "rapidly publish messages", context do
@@ -97,10 +113,12 @@ defmodule RBMQ.ProducerTest do
 
     for n <- 1..100 do
       assert :ok == TestProducer.publish(n)
+
       if n == 20 do
         # Kill channel
         AMQP.Channel.close(context[:channel])
-        :timer.sleep(1) # Break execution loop
+        # Break execution loop
+        :timer.sleep(1)
       end
     end
 
@@ -112,17 +130,17 @@ defmodule RBMQ.ProducerTest do
     assert Supervisor.count_children(ProducerTestConnection).workers == 1
 
     assert {:ok, %{message_count: 100, queue: @queue}} =
-      ProducerTestConnection.get_channel(RBMQ.ProducerTest.TestProducer.Channel)
-      |> get_queue_status()
+             ProducerTestConnection.get_channel(RBMQ.ProducerTest.TestProducer.Channel)
+             |> get_queue_status()
   end
 
   test "reads external config" do
     System.put_env("CUST_ROUTING_KEY", "ext_producer_test_routing_key")
-    TestProducerWithExternalConfig.start_link
+    TestProducerWithExternalConfig.start_link()
     System.delete_env("CUST_ROUTING_KEY")
 
     assert :ok == TestProducer.publish(%{example: true})
-    
+
     Supervisor.stop(TestProducerWithExternalConfig)
     Supervisor.stop(TestProducerWithExternalConfig.Channel)
   end

@@ -4,14 +4,16 @@ defmodule Rbmq.Mixfile do
   @version "0.4.0"
 
   def project do
-    [app: :rbmq19,
-     version: @version,
-     elixir: "~> 1.4",
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     description: description(),
-     package: package(),
-     deps: deps()]
+    [
+      app: :rbmq19,
+      version: @version,
+      elixir: "~> 1.4",
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      description: description(),
+      package: package(),
+      deps: deps()
+    ]
   end
 
   def application do
@@ -30,13 +32,13 @@ defmodule Rbmq.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:jason, "~> 1.0"},
-    {:confex, "~> 1.0"},
-    {:amqp, "~> 1.1.1"},
-    {:benchfella, "~> 0.3", only: [:dev, :test]},
-    {:ex_doc, ">= 0.0.0", only: :dev},
-    {:dogma, "~> 0.1", only: :dev},
-    {:credo, "~> 0.4", only: [:dev, :test]}]
+    [
+      {:jason, "~> 1.0"},
+      {:confex, "~> 1.0"},
+      {:amqp, "~> 4.0"},
+      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:credo, "~> 1.0", only: [:dev, :test]}
+    ]
   end
 
   defp description do
@@ -47,10 +49,11 @@ defmodule Rbmq.Mixfile do
 
   defp package do
     [
-     name: :rbmq19,
-     files: ["lib", "mix.exs", "README.md", "LICENSE.md"],
-     maintainers: ["Pavel Vesnin", "Andrew Dryga", "Robb Wright", "Manuel Pöter"],
-     licenses: ["MIT"],
-     links: %{"GitHub" => "https://github.com/Lean5/rbmq"}]
+      name: :rbmq19,
+      files: ["lib", "mix.exs", "README.md", "LICENSE.md"],
+      maintainers: ["Pavel Vesnin", "Andrew Dryga", "Robb Wright", "Manuel Pöter"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/Lean5/rbmq"}
+    ]
   end
 end

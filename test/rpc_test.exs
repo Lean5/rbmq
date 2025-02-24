@@ -5,7 +5,7 @@ defmodule RBMQ.RpcTest do
 
   defmodule RpcTestConnection do
     use RBMQ.Connection,
-      otp_app: :rbmq
+      otp_app: :rbmq19
   end
 
   @queue "rpc_test_queue"
@@ -40,9 +40,9 @@ defmodule RBMQ.RpcTest do
 
     def call(payload) do
       if payload == "crash",
-        do: raise payload
+        do: raise(payload)
 
-      %{result: payload |> String.upcase}
+      %{result: payload |> String.upcase()}
     end
   end
 
@@ -62,15 +62,15 @@ defmodule RBMQ.RpcTest do
 
     def call(payload) do
       Process.sleep(100)
-      %{result: payload |> String.upcase}
+      %{result: payload |> String.upcase()}
     end
   end
 
   setup_all do
-    RpcTestConnection.start_link
-    RpcTestClient.start_link
-    RpcTestServer.start_link
-    SlowRpcTestServer.start_link
+    RpcTestConnection.start_link()
+    RpcTestClient.start_link()
+    RpcTestServer.start_link()
+    SlowRpcTestServer.start_link()
     :ok
   end
 
@@ -103,13 +103,14 @@ defmodule RBMQ.RpcTest do
     for n <- 1..1000 do
       Task.async(fn ->
         value = Integer.to_string(n)
-        assert %{ "result" => ^value } = RpcTestClient.call!(value)
+        assert %{"result" => ^value} = RpcTestClient.call!(value)
       end)
     end
     |> Enum.each(&Task.await/1)
   end
 
   test "call timeout" do
-    assert {:error, {:timeout, _}} = RpcTestClient.call("foo", timeout: 10, routing_key: "rpc_test_queue_slow")
+    assert {:error, {:timeout, _}} =
+             RpcTestClient.call("foo", timeout: 10, routing_key: "rpc_test_queue_slow")
   end
 end
