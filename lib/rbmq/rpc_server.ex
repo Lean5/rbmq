@@ -8,30 +8,39 @@ defmodule RBMQ.RpcServer do
     quote do
       use RBMQ.Consumer, unquote(opts)
 
-      def handle_delivery(payload, meta, state) do        
-        safe_run fn(channel) ->
+      def handle_delivery(payload, meta, state) do
+        safe_run(fn channel ->
           AMQP.Basic.ack(channel, meta.delivery_tag)
 
           Task.start(fn ->
             {type, response} =
               try do
-                response = payload
-                  |> Jason.decode!
+                response =
+                  payload
+                  |> Jason.decode!()
                   |> call(meta)
 
                 {"rpc-call-success", response}
-              rescue  
+              rescue
                 e ->
-                  msg = if Exception.exception?(e),
-                    do: Exception.message(e),
-                    else: "Unknown error"
+                  msg =
+                    if Kernel.is_exception(e),
+                      do: Exception.message(e),
+                      else: "Unknown error"
+
                   {"rpc-call-error", %{message: msg, stacktrace: Exception.format_stacktrace()}}
               end
-            
-            response = response |> Jason.encode!
-            :ok = AMQP.Basic.publish(channel, "", meta.reply_to, response, type: type, correlation_id: meta.correlation_id)
+
+            response = response |> Jason.encode!()
+
+            :ok =
+              AMQP.Basic.publish(channel, "", meta.reply_to, response,
+                type: type,
+                correlation_id: meta.correlation_id
+              )
           end)
-        end
+        end)
+
         {:noreply, state}
       end
 
@@ -41,7 +50,7 @@ defmodule RBMQ.RpcServer do
         raise "RPC callback is not implemented."
       end
 
-      defoverridable [call: 1, call: 2]
+      defoverridable call: 1, call: 2
     end
   end
 end
